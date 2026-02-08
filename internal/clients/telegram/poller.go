@@ -67,7 +67,6 @@ type Poller struct {
 	running atomic.Bool
 	wg      sync.WaitGroup
 	stopCh  chan struct{}
-	mu      sync.RWMutex
 }
 
 // validate checks the configuration and applies defaults.
@@ -142,10 +141,6 @@ func (p *Poller) Start(ctx context.Context) error {
 		return fmt.Errorf("telegram: poller is already running")
 	}
 
-	p.mu.Lock()
-	p.stopCh = make(chan struct{})
-	p.mu.Unlock()
-
 	p.wg.Add(1)
 	go p.pollLoop(ctx)
 
@@ -164,9 +159,7 @@ func (p *Poller) Stop() {
 		return // Already stopped
 	}
 
-	p.mu.Lock()
 	close(p.stopCh)
-	p.mu.Unlock()
 
 	p.wg.Wait()
 	close(p.updates)
