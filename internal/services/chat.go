@@ -7,21 +7,21 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/pocky-ops-bot/internal/clients/ai"
+	"github.com/pocky-ops-bot/internal/clients/llm"
 	"github.com/pocky-ops-bot/internal/tools"
 )
 
 // AICompleter is the interface for AI completion.
 // Defined at the consumer side for testability.
 type AICompleter interface {
-	Complete(ctx context.Context, req ai.ChatRequest) (*ai.ChatResponse, error)
+	Complete(ctx context.Context, req llm.ChatRequest) (*llm.ChatResponse, error)
 }
 
 // ToolExecutor executes tool calls and provides tool definitions.
 // Defined at the consumer side for testability.
 type ToolExecutor interface {
-	Definitions() []ai.ToolDefinition
-	Execute(ctx context.Context, call ai.ToolCall) tools.ToolResult
+	Definitions() []llm.ToolDefinition
+	Execute(ctx context.Context, call llm.ToolCall) tools.ToolResult
 }
 
 // ChatService handles AI conversation generation.
@@ -31,6 +31,7 @@ type ChatService struct {
 	tools         ToolExecutor
 	systemPrompt  string
 	maxToolRounds int
+	vietnamese    bool
 	logger        *slog.Logger
 }
 
@@ -41,6 +42,13 @@ type ChatServiceOption func(*ChatService)
 func WithTools(executor ToolExecutor) ChatServiceOption {
 	return func(s *ChatService) {
 		s.tools = executor
+	}
+}
+
+// WithVietnamese forces the AI to always respond in Vietnamese.
+func WithVietnamese() ChatServiceOption {
+	return func(s *ChatService) {
+		s.vietnamese = true
 	}
 }
 
@@ -66,6 +74,11 @@ func NewChatService(completer AICompleter, systemPrompt string, logger *slog.Log
 		opt(s)
 	}
 
+	// Append Vietnamese language instruction if enabled
+	if s.vietnamese {
+		s.systemPrompt += "\n\nAlways respond in Vietnamese (tiếng Việt)."
+	}
+
 	// Enhance system prompt with tool descriptions so the LLM knows to use them
 	if s.tools != nil {
 		defs := s.tools.Definitions()
@@ -74,7 +87,8 @@ func NewChatService(completer AICompleter, systemPrompt string, logger *slog.Log
 			for _, def := range defs {
 				fmt.Fprintf(&toolList, "- %s: %s\n", def.Name, def.Description)
 			}
-			toolList .WriteString("\nWhen the user asks about their portfolio, balance, prices, or P&L, " +
+			toolList.WriteString("\nWhen the user asks about their portfolio, balance, prices, P&L, " +
+				"futures positions, margin, leverage, open orders, trade history, or funding fees, " +
 				"you MUST use these tools to fetch real-time data. " +
 				"Do not make up or estimate values — always call the tools first.")
 			s.systemPrompt += toolList.String()
@@ -87,16 +101,16 @@ func NewChatService(completer AICompleter, systemPrompt string, logger *slog.Log
 // GenerateResponse calls the AI with the given history and user text.
 // History is owned by the caller — this method does not store anything.
 // If tools are configured, handles the tool call loop automatically.
-func (s *ChatService) GenerateResponse(ctx context.Context, history []ai.ChatMessage, userText string) (string, error) {
+func (s *ChatService) GenerateResponse(ctx context.Context, history []llm.ChatMessage, userText string) (string, error) {
 	// Build messages: history + current user message
-	messages := make([]ai.ChatMessage, len(history), len(history)+1)
+	messages := make([]llm.ChatMessage, len(history), len(history)+1)
 	copy(messages, history)
-	messages = append(messages, ai.ChatMessage{
-		Role:    ai.RoleUser,
+	messages = append(messages, llm.ChatMessage{
+		Role:    llm.RoleUser,
 		Content: userText,
 	})
 
-	req := ai.ChatRequest{
+	req := llm.ChatRequest{
 		Messages: messages,
 		System:   s.systemPrompt,
 	}
@@ -131,8 +145,8 @@ func (s *ChatService) GenerateResponse(ctx context.Context, history []ai.ChatMes
 		}
 
 		// Append assistant message with tool calls
-		req.Messages = append(req.Messages, ai.ChatMessage{
-			Role:      ai.RoleAssistant,
+		req.Messages = append(req.Messages, llm.ChatMessage{
+			Role:      llm.RoleAssistant,
 			Content:   resp.Content,
 			ToolCalls: resp.ToolCalls,
 		})
@@ -152,8 +166,8 @@ func (s *ChatService) GenerateResponse(ctx context.Context, history []ai.ChatMes
 				slog.Int("content_len", len(result.Content)),
 			)
 
-			req.Messages = append(req.Messages, ai.ChatMessage{
-				Role:       ai.RoleTool,
+			req.Messages = append(req.Messages, llm.ChatMessage{
+				Role:       llm.RoleTool,
 				Content:    result.Content,
 				ToolCallID: result.CallID,
 			})

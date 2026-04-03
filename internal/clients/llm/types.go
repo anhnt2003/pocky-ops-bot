@@ -1,5 +1,5 @@
-// Package ai provides provider-agnostic type definitions for AI completion APIs.
-package ai
+// Package llm provides provider-agnostic type definitions for LLM completion APIs.
+package llm
 
 import "encoding/json"
 

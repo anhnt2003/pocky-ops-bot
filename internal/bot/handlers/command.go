@@ -39,14 +39,14 @@ func (h *CommandHandler) Start(ctx context.Context, msg *types.Message) error {
 		name = msg.From.FirstName
 	}
 
-	text := fmt.Sprintf("Hi %s! I'm Pocky Bot 🤖\n\nSend me a message and I'll reply using AI.\n\nCommands:\n/balance - View Binance portfolio & today's P&L\n/help - Show available commands\n/clear - Clear conversation history", name)
+	text := fmt.Sprintf("Xin chào %s! Mình là Pocky Bot 🤖\n\nGửi tin nhắn cho mình, mình sẽ trả lời bằng AI nhé.\n\n📋 Lệnh:\n/dautu - 💰 Xem danh mục đầu tư Spot & Futures\n/trogiup - ❓ Hướng dẫn sử dụng\n/xoa - 🗑️ Xoá lịch sử trò chuyện", name)
 
 	return h.sender.SendText(ctx, msg.Chat.ID, text)
 }
 
 // Help handles the /help command.
 func (h *CommandHandler) Help(ctx context.Context, msg *types.Message) error {
-	text := "Available commands:\n\n/start - Start the bot\n/balance - View Binance portfolio & today's P&L\n/help - Show this help message\n/clear - Clear conversation history"
+	text := "📋 Các lệnh có sẵn:\n\n🚀 /start - Bắt đầu sử dụng bot\n💰 /dautu - Xem danh mục đầu tư Spot & Futures\n❓ /trogiup - Hướng dẫn sử dụng\n🗑️ /xoa - Xoá lịch sử trò chuyện"
 
 	return h.sender.SendText(ctx, msg.Chat.ID, text)
 }

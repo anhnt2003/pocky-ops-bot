@@ -6,21 +6,21 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pocky-ops-bot/internal/clients/ai"
+	"github.com/pocky-ops-bot/internal/clients/llm"
 	"github.com/pocky-ops-bot/internal/tools"
 )
 
 // mockAICompleter implements AICompleter for testing.
 // Supports multiple responses for tool call loop testing.
 type mockAICompleter struct {
-	response  *ai.ChatResponse // single response (legacy)
-	responses []*ai.ChatResponse // multiple responses for sequential calls
+	response  *llm.ChatResponse // single response (legacy)
+	responses []*llm.ChatResponse // multiple responses for sequential calls
 	err       error
-	requests  []ai.ChatRequest
+	requests  []llm.ChatRequest
 	callIdx   int
 }
 
-func (m *mockAICompleter) Complete(ctx context.Context, req ai.ChatRequest) (*ai.ChatResponse, error) {
+func (m *mockAICompleter) Complete(ctx context.Context, req llm.ChatRequest) (*llm.ChatResponse, error) {
 	m.requests = append(m.requests, req)
 	if m.err != nil {
 		return nil, m.err
@@ -38,16 +38,16 @@ func (m *mockAICompleter) Complete(ctx context.Context, req ai.ChatRequest) (*ai
 
 // mockToolExecutor implements ToolExecutor for testing.
 type mockToolExecutor struct {
-	definitions []ai.ToolDefinition
+	definitions []llm.ToolDefinition
 	results     map[string]tools.ToolResult // keyed by tool name
-	calls       []ai.ToolCall
+	calls       []llm.ToolCall
 }
 
-func (m *mockToolExecutor) Definitions() []ai.ToolDefinition {
+func (m *mockToolExecutor) Definitions() []llm.ToolDefinition {
 	return m.definitions
 }
 
-func (m *mockToolExecutor) Execute(ctx context.Context, call ai.ToolCall) tools.ToolResult {
+func (m *mockToolExecutor) Execute(ctx context.Context, call llm.ToolCall) tools.ToolResult {
 	m.calls = append(m.calls, call)
 	if result, ok := m.results[call.Name]; ok {
 		result.CallID = call.ID
@@ -58,7 +58,7 @@ func (m *mockToolExecutor) Execute(ctx context.Context, call ai.ToolCall) tools.
 
 func TestChatService_GenerateResponse(t *testing.T) {
 	mock := &mockAICompleter{
-		response: &ai.ChatResponse{
+		response: &llm.ChatResponse{
 			Content:      "Hello! How can I help?",
 			Model:        "gemini-2.0-flash",
 			InputTokens:  10,
@@ -89,23 +89,23 @@ func TestChatService_GenerateResponse(t *testing.T) {
 	if len(req.Messages) != 1 {
 		t.Fatalf("expected 1 message, got %d", len(req.Messages))
 	}
-	if req.Messages[0].Role != ai.RoleUser || req.Messages[0].Content != "Hello" {
+	if req.Messages[0].Role != llm.RoleUser || req.Messages[0].Content != "Hello" {
 		t.Errorf("message = %+v, want {user, Hello}", req.Messages[0])
 	}
 }
 
 func TestChatService_GenerateResponse_WithHistory(t *testing.T) {
 	mock := &mockAICompleter{
-		response: &ai.ChatResponse{
+		response: &llm.ChatResponse{
 			Content: "Your name is Alice.",
 		},
 	}
 
 	service := NewChatService(mock, "", nil)
 
-	history := []ai.ChatMessage{
-		{Role: ai.RoleUser, Content: "My name is Alice"},
-		{Role: ai.RoleAssistant, Content: "Nice to meet you, Alice!"},
+	history := []llm.ChatMessage{
+		{Role: llm.RoleUser, Content: "My name is Alice"},
+		{Role: llm.RoleAssistant, Content: "Nice to meet you, Alice!"},
 	}
 
 	_, err := service.GenerateResponse(context.Background(), history, "What is my name?")
@@ -129,13 +129,13 @@ func TestChatService_GenerateResponse_WithHistory(t *testing.T) {
 
 func TestChatService_GenerateResponse_DoesNotMutateHistory(t *testing.T) {
 	mock := &mockAICompleter{
-		response: &ai.ChatResponse{Content: "reply"},
+		response: &llm.ChatResponse{Content: "reply"},
 	}
 
 	service := NewChatService(mock, "", nil)
 
-	history := []ai.ChatMessage{
-		{Role: ai.RoleUser, Content: "first"},
+	history := []llm.ChatMessage{
+		{Role: llm.RoleUser, Content: "first"},
 	}
 
 	_, err := service.GenerateResponse(context.Background(), history, "second")
@@ -149,7 +149,7 @@ func TestChatService_GenerateResponse_DoesNotMutateHistory(t *testing.T) {
 	}
 }
 
-func TestChatService_GenerateResponse_AIError(t *testing.T) {
+func TestChatService_GenerateResponse_LLMError(t *testing.T) {
 	mock := &mockAICompleter{
 		err: fmt.Errorf("api error"),
 	}
@@ -164,11 +164,11 @@ func TestChatService_GenerateResponse_AIError(t *testing.T) {
 
 func TestChatService_GenerateResponse_WithToolsAttachesDefinitions(t *testing.T) {
 	mock := &mockAICompleter{
-		response: &ai.ChatResponse{Content: "No tools needed"},
+		response: &llm.ChatResponse{Content: "No tools needed"},
 	}
 
 	tools := &mockToolExecutor{
-		definitions: []ai.ToolDefinition{
+		definitions: []llm.ToolDefinition{
 			{Name: "test_tool", Description: "A test tool", Parameters: json.RawMessage(`{}`)},
 		},
 	}
@@ -195,10 +195,10 @@ func TestChatService_GenerateResponse_WithToolsAttachesDefinitions(t *testing.T)
 func TestChatService_GenerateResponse_ToolCallLoop(t *testing.T) {
 	// Simulate: LLM calls tool, gets result, then returns final text
 	aiMock := &mockAICompleter{
-		responses: []*ai.ChatResponse{
+		responses: []*llm.ChatResponse{
 			{
 				Content: "",
-				ToolCalls: []ai.ToolCall{
+				ToolCalls: []llm.ToolCall{
 					{ID: "call_1", Name: "get_balance", Arguments: json.RawMessage(`{}`)},
 				},
 				InputTokens:  20,
@@ -213,7 +213,7 @@ func TestChatService_GenerateResponse_ToolCallLoop(t *testing.T) {
 	}
 
 	tools := &mockToolExecutor{
-		definitions: []ai.ToolDefinition{
+		definitions: []llm.ToolDefinition{
 			{Name: "get_balance", Description: "Get balance"},
 		},
 		results: map[string]tools.ToolResult{
@@ -251,20 +251,20 @@ func TestChatService_GenerateResponse_ToolCallLoop(t *testing.T) {
 	if len(secondReq.Messages) != 3 {
 		t.Fatalf("second request messages = %d, want 3", len(secondReq.Messages))
 	}
-	if secondReq.Messages[1].Role != ai.RoleAssistant {
-		t.Errorf("messages[1].Role = %q, want %q", secondReq.Messages[1].Role, ai.RoleAssistant)
+	if secondReq.Messages[1].Role != llm.RoleAssistant {
+		t.Errorf("messages[1].Role = %q, want %q", secondReq.Messages[1].Role, llm.RoleAssistant)
 	}
-	if secondReq.Messages[2].Role != ai.RoleTool {
-		t.Errorf("messages[2].Role = %q, want %q", secondReq.Messages[2].Role, ai.RoleTool)
+	if secondReq.Messages[2].Role != llm.RoleTool {
+		t.Errorf("messages[2].Role = %q, want %q", secondReq.Messages[2].Role, llm.RoleTool)
 	}
 }
 
 func TestChatService_GenerateResponse_MultipleToolCalls(t *testing.T) {
 	// LLM calls two tools in one round, then returns final text
 	aiMock := &mockAICompleter{
-		responses: []*ai.ChatResponse{
+		responses: []*llm.ChatResponse{
 			{
-				ToolCalls: []ai.ToolCall{
+				ToolCalls: []llm.ToolCall{
 					{ID: "call_1", Name: "get_balance", Arguments: json.RawMessage(`{}`)},
 					{ID: "call_2", Name: "get_prices", Arguments: json.RawMessage(`{"symbols":["BTCUSDT"]}`)},
 				},
@@ -276,7 +276,7 @@ func TestChatService_GenerateResponse_MultipleToolCalls(t *testing.T) {
 	}
 
 	tools := &mockToolExecutor{
-		definitions: []ai.ToolDefinition{
+		definitions: []llm.ToolDefinition{
 			{Name: "get_balance", Description: "Get balance"},
 			{Name: "get_prices", Description: "Get prices"},
 		},
@@ -306,15 +306,15 @@ func TestChatService_GenerateResponse_MultipleToolCalls(t *testing.T) {
 func TestChatService_GenerateResponse_ToolCallLoopExceeded(t *testing.T) {
 	// LLM keeps calling tools forever
 	aiMock := &mockAICompleter{
-		response: &ai.ChatResponse{
-			ToolCalls: []ai.ToolCall{
+		response: &llm.ChatResponse{
+			ToolCalls: []llm.ToolCall{
 				{ID: "call_loop", Name: "infinite", Arguments: json.RawMessage(`{}`)},
 			},
 		},
 	}
 
 	tools := &mockToolExecutor{
-		definitions: []ai.ToolDefinition{{Name: "infinite"}},
+		definitions: []llm.ToolDefinition{{Name: "infinite"}},
 		results: map[string]tools.ToolResult{
 			"infinite": {Content: "looping"},
 		},
@@ -331,9 +331,9 @@ func TestChatService_GenerateResponse_ToolCallLoopExceeded(t *testing.T) {
 func TestChatService_GenerateResponse_ToolError(t *testing.T) {
 	// Tool returns an error, LLM should still get the error and respond
 	aiMock := &mockAICompleter{
-		responses: []*ai.ChatResponse{
+		responses: []*llm.ChatResponse{
 			{
-				ToolCalls: []ai.ToolCall{
+				ToolCalls: []llm.ToolCall{
 					{ID: "call_1", Name: "failing_tool", Arguments: json.RawMessage(`{}`)},
 				},
 			},
@@ -344,7 +344,7 @@ func TestChatService_GenerateResponse_ToolError(t *testing.T) {
 	}
 
 	tools := &mockToolExecutor{
-		definitions: []ai.ToolDefinition{{Name: "failing_tool"}},
+		definitions: []llm.ToolDefinition{{Name: "failing_tool"}},
 		results: map[string]tools.ToolResult{
 			"failing_tool": {Content: "connection timeout", IsError: true},
 		},
@@ -370,14 +370,14 @@ func TestChatService_GenerateResponse_ToolError(t *testing.T) {
 }
 
 func TestChatService_WithMaxToolRounds(t *testing.T) {
-	service := NewChatService(&mockAICompleter{response: &ai.ChatResponse{Content: "ok"}}, "", nil, WithMaxToolRounds(10))
+	service := NewChatService(&mockAICompleter{response: &llm.ChatResponse{Content: "ok"}}, "", nil, WithMaxToolRounds(10))
 	if service.maxToolRounds != 10 {
 		t.Errorf("maxToolRounds = %d, want 10", service.maxToolRounds)
 	}
 }
 
 func TestChatService_DefaultMaxToolRounds(t *testing.T) {
-	service := NewChatService(&mockAICompleter{response: &ai.ChatResponse{Content: "ok"}}, "", nil)
+	service := NewChatService(&mockAICompleter{response: &llm.ChatResponse{Content: "ok"}}, "", nil)
 	if service.maxToolRounds != 5 {
 		t.Errorf("maxToolRounds = %d, want 5", service.maxToolRounds)
 	}

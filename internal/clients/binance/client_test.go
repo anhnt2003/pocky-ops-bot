@@ -177,9 +177,9 @@ func TestDoSignedGet_AddsAuthHeaders(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	body, err := client.doSignedGet(context.Background(), "/api/v3/account", nil)
+	body, err := client.DoSignedGet(context.Background(), "/api/v3/account", nil)
 	if err != nil {
-		t.Fatalf("doSignedGet() error = %v", err)
+		t.Fatalf("DoSignedGet() error = %v", err)
 	}
 
 	if string(body) != `{"status":"ok"}` {
@@ -225,9 +225,9 @@ func TestDoPublicGet_NoAuthHeaders(t *testing.T) {
 	params := make(map[string][]string)
 	params["symbol"] = []string{"BTCUSDT"}
 
-	body, err := client.doPublicGet(context.Background(), "/api/v3/ticker/price", params)
+	body, err := client.DoPublicGet(context.Background(), "/api/v3/ticker/price", params)
 	if err != nil {
-		t.Fatalf("doPublicGet() error = %v", err)
+		t.Fatalf("DoPublicGet() error = %v", err)
 	}
 
 	if !strings.Contains(string(body), "BTCUSDT") {
@@ -324,7 +324,7 @@ func TestDoRequest_ErrorResponse(t *testing.T) {
 				t.Fatalf("NewClient() error = %v", err)
 			}
 
-			_, err = client.doPublicGet(context.Background(), "/api/v3/ticker/price", nil)
+			_, err = client.DoPublicGet(context.Background(), "/api/v3/ticker/price", nil)
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -365,7 +365,7 @@ func TestDoRequest_NonJSONErrorResponse(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	_, err = client.doPublicGet(context.Background(), "/test", nil)
+	_, err = client.DoPublicGet(context.Background(), "/test", nil)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

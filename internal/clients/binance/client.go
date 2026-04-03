@@ -163,8 +163,8 @@ func NewClient(apiKey, secretKey string, opts ...ClientOption) (*Client, error) 
 	return &Client{config: config}, nil
 }
 
-// doPublicGet performs an unauthenticated GET request to a public Binance endpoint.
-func (c *Client) doPublicGet(ctx context.Context, path string, params url.Values) ([]byte, error) {
+// DoPublicGet performs an unauthenticated GET request to a public Binance endpoint.
+func (c *Client) DoPublicGet(ctx context.Context, path string, params url.Values) ([]byte, error) {
 	reqURL := c.config.BaseURL + path
 	if len(params) > 0 {
 		reqURL += "?" + params.Encode()
@@ -207,14 +207,14 @@ func (c *Client) doPublicGet(ctx context.Context, path string, params url.Values
 	)
 
 	if resp.StatusCode >= 400 {
-		return nil, c.parseErrorResponse(body, resp.StatusCode, path)
+		return nil, c.ParseErrorResponse(body, resp.StatusCode, path)
 	}
 
 	return body, nil
 }
 
-// doSignedGet performs an authenticated (signed) GET request to a Binance endpoint.
-func (c *Client) doSignedGet(ctx context.Context, path string, params url.Values) ([]byte, error) {
+// DoSignedGet performs an authenticated (signed) GET request to a Binance endpoint.
+func (c *Client) DoSignedGet(ctx context.Context, path string, params url.Values) ([]byte, error) {
 	if params == nil {
 		params = url.Values{}
 	}
@@ -270,15 +270,15 @@ func (c *Client) doSignedGet(ctx context.Context, path string, params url.Values
 	)
 
 	if resp.StatusCode >= 400 {
-		return nil, c.parseErrorResponse(body, resp.StatusCode, path)
+		return nil, c.ParseErrorResponse(body, resp.StatusCode, path)
 	}
 
 	return body, nil
 }
 
-// parseErrorResponse attempts to parse a Binance error response body
+// ParseErrorResponse attempts to parse a Binance error response body
 // and returns a *BinanceError.
-func (c *Client) parseErrorResponse(body []byte, statusCode int, path string) error {
+func (c *Client) ParseErrorResponse(body []byte, statusCode int, path string) error {
 	binErr := &BinanceError{
 		HTTPStatus: statusCode,
 	}

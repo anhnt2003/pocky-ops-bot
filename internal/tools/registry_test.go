@@ -7,19 +7,19 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/pocky-ops-bot/internal/clients/ai"
+	"github.com/pocky-ops-bot/internal/clients/llm"
 )
 
 // mockTool implements Tool with configurable behavior.
 type mockTool struct {
-	def      ai.ToolDefinition
+	def      llm.ToolDefinition
 	result   string
 	err      error
 	called   bool
 	lastArgs json.RawMessage
 }
 
-func (m *mockTool) Definition() ai.ToolDefinition {
+func (m *mockTool) Definition() llm.ToolDefinition {
 	return m.def
 }
 
@@ -31,7 +31,7 @@ func (m *mockTool) Execute(ctx context.Context, arguments json.RawMessage) (stri
 
 func newMockTool(name, description, result string, err error) *mockTool {
 	return &mockTool{
-		def: ai.ToolDefinition{
+		def: llm.ToolDefinition{
 			Name:        name,
 			Description: description,
 			Parameters:  json.RawMessage(`{"type":"object"}`),
@@ -116,7 +116,7 @@ func TestRegistry_Execute_Success(t *testing.T) {
 	tool := newMockTool("echo", "Echo tool", `{"echo":"hello"}`, nil)
 	r.Register(tool)
 
-	call := ai.ToolCall{
+	call := llm.ToolCall{
 		ID:        "call-1",
 		Name:      "echo",
 		Arguments: json.RawMessage(`{"text":"hello"}`),
@@ -143,7 +143,7 @@ func TestRegistry_Execute_Error(t *testing.T) {
 	tool := newMockTool("fail", "Failing tool", "", errors.New("something broke"))
 	r.Register(tool)
 
-	call := ai.ToolCall{
+	call := llm.ToolCall{
 		ID:        "call-2",
 		Name:      "fail",
 		Arguments: json.RawMessage(`{}`),
@@ -165,7 +165,7 @@ func TestRegistry_Execute_Error(t *testing.T) {
 func TestRegistry_Execute_UnknownTool(t *testing.T) {
 	r := NewRegistry(nil)
 
-	call := ai.ToolCall{
+	call := llm.ToolCall{
 		ID:        "call-3",
 		Name:      "nonexistent",
 		Arguments: json.RawMessage(`{}`),
@@ -189,7 +189,7 @@ func TestRegistry_Execute_Logging(t *testing.T) {
 	r := NewRegistry(logger)
 	r.Register(newMockTool("logged", "Logged tool", "ok", nil))
 
-	call := ai.ToolCall{
+	call := llm.ToolCall{
 		ID:        "call-4",
 		Name:      "logged",
 		Arguments: json.RawMessage(`{}`),

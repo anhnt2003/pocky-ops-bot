@@ -1,4 +1,4 @@
-package ai
+package llm
 
 import (
 	"context"
@@ -147,7 +147,7 @@ func TestCompleteGemini(t *testing.T) {
 	// We need to override the URL, so we'll use a custom HTTP client that rewrites the URL
 	client, err := NewClient("test-key",
 		WithProvider(ProviderGemini),
-		WithAIHTTPClient(&urlRewriteClient{
+		WithLLMHTTPClient(&urlRewriteClient{
 			target: server.URL,
 			inner:  http.DefaultClient,
 		}),
@@ -212,7 +212,7 @@ func TestCompleteClaude(t *testing.T) {
 
 	client, err := NewClient("test-key",
 		WithProvider(ProviderClaude),
-		WithAIHTTPClient(&urlRewriteClient{
+		WithLLMHTTPClient(&urlRewriteClient{
 			target: server.URL,
 			inner:  http.DefaultClient,
 		}),
@@ -283,7 +283,7 @@ func TestCompleteOpenAI(t *testing.T) {
 
 	client, err := NewClient("test-key",
 		WithProvider(ProviderOpenAI),
-		WithAIHTTPClient(&urlRewriteClient{
+		WithLLMHTTPClient(&urlRewriteClient{
 			target: server.URL,
 			inner:  http.DefaultClient,
 		}),
@@ -342,7 +342,7 @@ func TestCompleteQwen(t *testing.T) {
 
 	client, err := NewClient("test-key",
 		WithProvider(ProviderQwen),
-		WithAIHTTPClient(&urlRewriteClient{
+		WithLLMHTTPClient(&urlRewriteClient{
 			target: server.URL,
 			inner:  http.DefaultClient,
 		}),
@@ -386,7 +386,7 @@ func TestCompleteAPIError(t *testing.T) {
 
 	client, err := NewClient("test-key",
 		WithProvider(ProviderGemini),
-		WithAIHTTPClient(&urlRewriteClient{
+		WithLLMHTTPClient(&urlRewriteClient{
 			target: server.URL,
 			inner:  http.DefaultClient,
 		}),
@@ -404,9 +404,9 @@ func TestCompleteAPIError(t *testing.T) {
 		t.Fatal("Complete() expected error, got nil")
 	}
 
-	aiErr, ok := err.(*AIError)
+	aiErr, ok := err.(*LLMError)
 	if !ok {
-		t.Fatalf("expected *AIError, got %T: %v", err, err)
+		t.Fatalf("expected *LLMError, got %T: %v", err, err)
 	}
 
 	if aiErr.Code != 400 {
@@ -434,7 +434,7 @@ func TestCompleteRateLimitError(t *testing.T) {
 
 	client, err := NewClient("test-key",
 		WithProvider(ProviderGemini),
-		WithAIHTTPClient(&urlRewriteClient{
+		WithLLMHTTPClient(&urlRewriteClient{
 			target: server.URL,
 			inner:  http.DefaultClient,
 		}),
@@ -449,9 +449,9 @@ func TestCompleteRateLimitError(t *testing.T) {
 		},
 	})
 
-	aiErr, ok := err.(*AIError)
+	aiErr, ok := err.(*LLMError)
 	if !ok {
-		t.Fatalf("expected *AIError, got %T: %v", err, err)
+		t.Fatalf("expected *LLMError, got %T: %v", err, err)
 	}
 
 	if !aiErr.IsRetryable() {
@@ -519,7 +519,7 @@ func TestCompleteGeminiToolCall(t *testing.T) {
 
 	client, _ := NewClient("test-key",
 		WithProvider(ProviderGemini),
-		WithAIHTTPClient(&urlRewriteClient{target: server.URL, inner: http.DefaultClient}),
+		WithLLMHTTPClient(&urlRewriteClient{target: server.URL, inner: http.DefaultClient}),
 	)
 
 	resp, err := client.Complete(context.Background(), ChatRequest{
@@ -576,7 +576,7 @@ func TestCompleteClaudeToolCall(t *testing.T) {
 
 	client, _ := NewClient("test-key",
 		WithProvider(ProviderClaude),
-		WithAIHTTPClient(&urlRewriteClient{target: server.URL, inner: http.DefaultClient}),
+		WithLLMHTTPClient(&urlRewriteClient{target: server.URL, inner: http.DefaultClient}),
 	)
 
 	resp, err := client.Complete(context.Background(), ChatRequest{
@@ -647,7 +647,7 @@ func TestCompleteOpenAIToolCall(t *testing.T) {
 
 	client, _ := NewClient("test-key",
 		WithProvider(ProviderOpenAI),
-		WithAIHTTPClient(&urlRewriteClient{target: server.URL, inner: http.DefaultClient}),
+		WithLLMHTTPClient(&urlRewriteClient{target: server.URL, inner: http.DefaultClient}),
 	)
 
 	resp, err := client.Complete(context.Background(), ChatRequest{

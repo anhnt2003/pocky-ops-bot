@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/pocky-ops-bot/internal/clients/ai"
+	"github.com/pocky-ops-bot/internal/clients/llm"
 )
 
 // Registry holds all available tools indexed by name.
@@ -35,8 +35,8 @@ func (r *Registry) Register(tool Tool) {
 }
 
 // Definitions returns a slice of all tool definitions (for sending to the LLM).
-func (r *Registry) Definitions() []ai.ToolDefinition {
-	defs := make([]ai.ToolDefinition, 0, len(r.tools))
+func (r *Registry) Definitions() []llm.ToolDefinition {
+	defs := make([]llm.ToolDefinition, 0, len(r.tools))
 	for _, tool := range r.tools {
 		defs = append(defs, tool.Definition())
 	}
@@ -51,7 +51,7 @@ func (r *Registry) Get(name string) (Tool, bool) {
 
 // Execute runs a tool call and returns the result.
 // If the tool is not found, it returns a ToolResult with IsError set to true.
-func (r *Registry) Execute(ctx context.Context, call ai.ToolCall) ToolResult {
+func (r *Registry) Execute(ctx context.Context, call llm.ToolCall) ToolResult {
 	tool, ok := r.tools[call.Name]
 	if !ok {
 		return ToolResult{

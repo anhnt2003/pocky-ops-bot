@@ -1,5 +1,5 @@
-// Package ai provides a provider-agnostic AI completion client.
-package ai
+// Package llm provides a provider-agnostic LLM completion client.
+package llm
 
 import (
 	"bytes"
@@ -125,22 +125,22 @@ func WithMaxTokens(n int) ClientOption {
 	}
 }
 
-// WithAITimeout sets the HTTP request timeout.
-func WithAITimeout(d time.Duration) ClientOption {
+// WithLLMTimeout sets the HTTP request timeout.
+func WithLLMTimeout(d time.Duration) ClientOption {
 	return func(c *ClientConfig) {
 		c.Timeout = d
 	}
 }
 
-// WithAIHTTPClient sets the HTTP client.
-func WithAIHTTPClient(client HTTPClient) ClientOption {
+// WithLLMHTTPClient sets the HTTP client.
+func WithLLMHTTPClient(client HTTPClient) ClientOption {
 	return func(c *ClientConfig) {
 		c.HTTPClient = client
 	}
 }
 
-// WithAILogger sets the logger.
-func WithAILogger(logger *slog.Logger) ClientOption {
+// WithLLMLogger sets the logger.
+func WithLLMLogger(logger *slog.Logger) ClientOption {
 	return func(c *ClientConfig) {
 		c.Logger = logger
 	}
@@ -610,9 +610,9 @@ func (c *Client) doRequest(req *http.Request, provider Provider, parser response
 	return parser(body)
 }
 
-// parseErrorResponse extracts an AIError from a failed response.
+// parseErrorResponse extracts an LLMError from a failed response.
 func (c *Client) parseErrorResponse(body []byte, statusCode int, provider Provider) error {
-	aiErr := &AIError{
+	aiErr := &LLMError{
 		Code:     statusCode,
 		Provider: provider,
 	}

@@ -16,7 +16,7 @@ func (c *Client) GetTickerPrice(ctx context.Context, symbols []string) ([]Ticker
 		return nil, err
 	}
 
-	body, err := c.doPublicGet(ctx, "/api/v3/ticker/price", params)
+	body, err := c.DoPublicGet(ctx, "/api/v3/ticker/price", params)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (c *Client) GetTicker24hr(ctx context.Context, symbols []string) ([]Ticker2
 		return nil, err
 	}
 
-	body, err := c.doPublicGet(ctx, "/api/v3/ticker/24hr", params)
+	body, err := c.DoPublicGet(ctx, "/api/v3/ticker/24hr", params)
 	if err != nil {
 		return nil, err
 	}

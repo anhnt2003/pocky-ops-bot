@@ -47,6 +47,9 @@ type Config struct {
 	// AISystemPrompt is the system prompt for AI conversations.
 	AISystemPrompt string
 
+	// AIVietnamese forces the AI to always respond in Vietnamese.
+	AIVietnamese bool
+
 	// ConversationMaxTurns is the maximum number of message pairs to keep in history.
 	ConversationMaxTurns int
 
@@ -61,6 +64,9 @@ type Config struct {
 
 	// BinanceBaseURL overrides the default Binance API base URL (optional, for testnet).
 	BinanceBaseURL string
+
+	// BinanceFuturesBaseURL overrides the default Binance Futures API base URL (optional, for testnet).
+	BinanceFuturesBaseURL string
 }
 
 // Load reads configuration from environment variables and .env file.
@@ -83,13 +89,15 @@ func Load() (*Config, error) {
 		AIMaxTokens:    parseInt("AI_MAX_TOKENS", 1024),
 		AITimeout:      parseDuration("AI_TIMEOUT", 60*time.Second),
 		AISystemPrompt: getEnvOrDefault("AI_SYSTEM_PROMPT", "You are Pocky, a helpful and friendly assistant."),
+		AIVietnamese:   parseBool("AI_VIETNAMESE", true),
 
 		ConversationMaxTurns: parseInt("CONVERSATION_MAX_TURNS", 20),
 		ConversationTTL:      parseDuration("CONVERSATION_TTL", 30*time.Minute),
 
 		BinanceAPIKey:    os.Getenv("BINANCE_API_KEY"),
 		BinanceSecretKey: os.Getenv("BINANCE_SECRET_KEY"),
-		BinanceBaseURL:   os.Getenv("BINANCE_BASE_URL"),
+		BinanceBaseURL:        os.Getenv("BINANCE_BASE_URL"),
+		BinanceFuturesBaseURL: os.Getenv("BINANCE_FUTURES_BASE_URL"),
 	}
 
 	return cfg, nil
@@ -108,6 +116,16 @@ func parseInt(key string, defaultVal int) int {
 	if val := os.Getenv(key); val != "" {
 		if n, err := strconv.Atoi(val); err == nil {
 			return n
+		}
+	}
+	return defaultVal
+}
+
+// parseBool parses a boolean from an environment variable.
+func parseBool(key string, defaultVal bool) bool {
+	if val := os.Getenv(key); val != "" {
+		if b, err := strconv.ParseBool(val); err == nil {
+			return b
 		}
 	}
 	return defaultVal

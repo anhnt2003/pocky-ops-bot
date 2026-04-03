@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/pocky-ops-bot/internal/bot/types"
-	"github.com/pocky-ops-bot/internal/clients/ai"
+	"github.com/pocky-ops-bot/internal/clients/llm"
 )
 
 // MessageSender sends text messages and chat actions to Telegram.
@@ -19,7 +19,7 @@ type MessageSender interface {
 
 // ChatCompleter generates an AI response given conversation history and user text.
 type ChatCompleter interface {
-	GenerateResponse(ctx context.Context, history []ai.ChatMessage, userText string) (string, error)
+	GenerateResponse(ctx context.Context, history []llm.ChatMessage, userText string) (string, error)
 }
 
 // chatWorker represents an active per-chat goroutine.
@@ -141,7 +141,7 @@ func (d *Dispatcher) runWorker(ctx context.Context, chatID int64, ch <-chan type
 	defer d.active.Add(-1)
 	defer d.workers.Delete(chatID)
 
-	history := make([]ai.ChatMessage, 0)
+	history := make([]llm.ChatMessage, 0)
 	idle := time.NewTimer(d.idleTTL)
 	defer idle.Stop()
 
@@ -175,7 +175,7 @@ func (d *Dispatcher) runWorker(ctx context.Context, chatID int64, ch <-chan type
 
 // handleUpdate processes a single update within the worker goroutine.
 // It returns the (possibly updated) history.
-func (d *Dispatcher) handleUpdate(ctx context.Context, chatID int64, update types.Update, history []ai.ChatMessage) []ai.ChatMessage {
+func (d *Dispatcher) handleUpdate(ctx context.Context, chatID int64, update types.Update, history []llm.ChatMessage) []llm.ChatMessage {
 	msg := update.Message
 	if msg == nil {
 		// Handle callback queries, etc. through router
@@ -192,17 +192,19 @@ func (d *Dispatcher) handleUpdate(ctx context.Context, chatID int64, update type
 	if text[0] == '/' {
 		cmd := extractCommand(text)
 		switch cmd {
-		case "clear":
+		case "xoa":
 			history = history[:0]
 			d.logger.Info("conversation cleared",
 				slog.Int64("chat_id", chatID),
 			)
-			_ = d.sender.SendText(ctx, chatID, "Conversation history cleared.")
+			_ = d.sender.SendText(ctx, chatID, "🗑️ Đã xoá lịch sử trò chuyện.")
 			return history
 
-		case "balance":
-			// Shortcut: inject a specific prompt to trigger Binance tool calls
-			text = "Show my current Binance portfolio: list each asset with its USDT value, total portfolio value in USDT, and today's 24h P&L percentage for each asset and overall. Use the available tools to fetch real-time data."
+		case "dautu", "dautư":
+			text = "Hiển thị tổng quan danh mục đầu tư Binance của tôi, bao gồm cả Spot và Futures:\n" +
+				"1. Spot: liệt kê từng tài sản với giá trị USDT, tổng giá trị portfolio, và % lãi/lỗ 24h.\n" +
+				"2. Futures: tổng số dư ví, lãi/lỗ chưa thực hiện, margin khả dụng, tất cả vị thế đang mở (giá vào, giá mark, P&L, đòn bẩy, giá thanh lý), và các lệnh đang chờ.\n" +
+				"Dùng các tool có sẵn để lấy dữ liệu realtime."
 
 		default:
 			// Other commands (/start, /help) — delegate to router
@@ -226,8 +228,8 @@ func (d *Dispatcher) handleUpdate(ctx context.Context, chatID int64, update type
 
 	// Update local history
 	history = append(history,
-		ai.ChatMessage{Role: ai.RoleUser, Content: text},
-		ai.ChatMessage{Role: ai.RoleAssistant, Content: reply},
+		llm.ChatMessage{Role: llm.RoleUser, Content: text},
+		llm.ChatMessage{Role: llm.RoleAssistant, Content: reply},
 	)
 
 	// Trim to max turns

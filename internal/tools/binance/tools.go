@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/pocky-ops-bot/internal/clients/ai"
 	bnclient "github.com/pocky-ops-bot/internal/clients/binance"
+	"github.com/pocky-ops-bot/internal/clients/llm"
 )
 
 // BinanceClient is the interface for Binance API operations.
@@ -35,8 +35,8 @@ func NewGetBalancesTool(client BinanceClient, logger *slog.Logger) *GetBalancesT
 	return &GetBalancesTool{client: client, logger: logger}
 }
 
-func (t *GetBalancesTool) Definition() ai.ToolDefinition {
-	return ai.ToolDefinition{
+func (t *GetBalancesTool) Definition() llm.ToolDefinition {
+	return llm.ToolDefinition{
 		Name:        "get_spot_balances",
 		Description: "Get all non-zero asset balances from the Binance spot account. Returns each asset with its free (available) and locked (in orders) amounts. Use this to see what assets the user holds.",
 		Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
@@ -76,8 +76,8 @@ func NewGetPricesTool(client BinanceClient, logger *slog.Logger) *GetPricesTool 
 	return &GetPricesTool{client: client, logger: logger}
 }
 
-func (t *GetPricesTool) Definition() ai.ToolDefinition {
-	return ai.ToolDefinition{
+func (t *GetPricesTool) Definition() llm.ToolDefinition {
+	return llm.ToolDefinition{
 		Name:        "get_ticker_prices",
 		Description: "Get the current price for one or more trading pairs on Binance. Pass symbols like BTCUSDT, ETHUSDT. Use after get_spot_balances to calculate portfolio value in USDT.",
 		Parameters: json.RawMessage(`{
@@ -147,8 +147,8 @@ func NewGet24hrStatsTool(client BinanceClient, logger *slog.Logger) *Get24hrStat
 	return &Get24hrStatsTool{client: client, logger: logger}
 }
 
-func (t *Get24hrStatsTool) Definition() ai.ToolDefinition {
-	return ai.ToolDefinition{
+func (t *Get24hrStatsTool) Definition() llm.ToolDefinition {
+	return llm.ToolDefinition{
 		Name:        "get_24hr_ticker_stats",
 		Description: "Get 24-hour price change statistics for one or more trading pairs on Binance. Returns priceChangePercent, highPrice, lowPrice, volume. Use this to calculate today's profit/loss percentage.",
 		Parameters: json.RawMessage(`{

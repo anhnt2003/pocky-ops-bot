@@ -10,8 +10,8 @@ import (
 
 	"github.com/pocky-ops-bot/internal/bot"
 	"github.com/pocky-ops-bot/internal/bot/handlers"
-	"github.com/pocky-ops-bot/internal/clients/ai"
 	"github.com/pocky-ops-bot/internal/clients/binance"
+	"github.com/pocky-ops-bot/internal/clients/llm"
 	"github.com/pocky-ops-bot/internal/clients/telegram"
 	"github.com/pocky-ops-bot/internal/config"
 	"github.com/pocky-ops-bot/internal/services"
@@ -79,26 +79,26 @@ func main() {
 
 	// Register command menu with Telegram (appears when user types "/")
 	if err := sender.SetMyCommands(ctx, []telegram.BotCommand{
-		{Command: "start", Description: "Start the bot"},
-		{Command: "balance", Description: "View Binance portfolio & today's P&L"},
-		{Command: "clear", Description: "Clear conversation history"},
-		{Command: "help", Description: "Show available commands"},
+		{Command: "start", Description: "🚀 Bắt đầu sử dụng bot"},
+		{Command: "dautu", Description: "💰 Xem danh mục đầu tư Spot & Futures"},
+		{Command: "xoa", Description: "🗑️ Xoá lịch sử trò chuyện"},
+		{Command: "trogiup", Description: "❓ Hướng dẫn sử dụng"},
 	}); err != nil {
 		slog.Warn("Failed to set bot commands", "error", err)
 	}
 
 	// Create AI client
-	aiOpts := []ai.ClientOption{
-		ai.WithProvider(ai.Provider(cfg.AIProvider)),
-		ai.WithModel(cfg.AIModel),
-		ai.WithMaxTokens(cfg.AIMaxTokens),
-		ai.WithAITimeout(cfg.AITimeout),
-		ai.WithAILogger(logger),
+	aiOpts := []llm.ClientOption{
+		llm.WithProvider(llm.Provider(cfg.AIProvider)),
+		llm.WithModel(cfg.AIModel),
+		llm.WithMaxTokens(cfg.AIMaxTokens),
+		llm.WithLLMTimeout(cfg.AITimeout),
+		llm.WithLLMLogger(logger),
 	}
 	if cfg.AIBaseURL != "" {
-		aiOpts = append(aiOpts, ai.WithBaseURL(cfg.AIBaseURL))
+		aiOpts = append(aiOpts, llm.WithBaseURL(cfg.AIBaseURL))
 	}
-	aiClient, err := ai.NewClient(cfg.AIAPIKey, aiOpts...)
+	aiClient, err := llm.NewClient(cfg.AIAPIKey, aiOpts...)
 	if err != nil {
 		slog.Error("Failed to create AI client", "error", err)
 		os.Exit(1)
@@ -106,6 +106,9 @@ func main() {
 
 	// Create tool registry with Binance tools (if configured)
 	var chatOpts []services.ChatServiceOption
+	if cfg.AIVietnamese {
+		chatOpts = append(chatOpts, services.WithVietnamese())
+	}
 	if cfg.BinanceAPIKey != "" && cfg.BinanceSecretKey != "" {
 		bnOpts := []binance.ClientOption{
 			binance.WithLogger(logger),
@@ -125,18 +128,37 @@ func main() {
 		registry.Register(binancetools.NewGetPricesTool(bnClient, logger))
 		registry.Register(binancetools.NewGet24hrStatsTool(bnClient, logger))
 
+		// Futures client & tools
+		futOpts := []binance.ClientOption{
+			binance.WithLogger(logger),
+		}
+		if cfg.BinanceFuturesBaseURL != "" {
+			futOpts = append(futOpts, binance.WithBaseURL(cfg.BinanceFuturesBaseURL))
+		}
+		futClient, err := binance.NewFuturesClient(cfg.BinanceAPIKey, cfg.BinanceSecretKey, futOpts...)
+		if err != nil {
+			slog.Error("Failed to create Binance Futures client", "error", err)
+			os.Exit(1)
+		}
+
+		registry.Register(binancetools.NewGetFuturesAccountTool(futClient, logger))
+		registry.Register(binancetools.NewGetFuturesPositionsTool(futClient, logger))
+		registry.Register(binancetools.NewGetFuturesOpenOrdersTool(futClient, logger))
+		registry.Register(binancetools.NewGetFuturesTradesTool(futClient, logger))
+		registry.Register(binancetools.NewGetFuturesIncomeTool(futClient, logger))
+
 		chatOpts = append(chatOpts, services.WithTools(registry))
-		slog.Info("Binance tools registered", "tools", 3)
+		slog.Info("Binance tools registered", "spot", 3, "futures", 5)
 	}
 
 	// Create stateless chat service
 	chatService := services.NewChatService(aiClient, cfg.AISystemPrompt, logger, chatOpts...)
 
-	// Build router for stateless commands (/start, /help)
+	// Build router for stateless commands
 	router := bot.NewRouter(logger)
 	cmdHandler := handlers.NewCommandHandler(sender, logger)
 	router.RegisterCommand("start", cmdHandler.Start)
-	router.RegisterCommand("help", cmdHandler.Help)
+	router.RegisterCommand("trogiup", cmdHandler.Help)
 
 	// Create dispatcher — channel per-chat, zero shared state
 	dispatcher := bot.NewDispatcher(router, chatService, sender, logger,

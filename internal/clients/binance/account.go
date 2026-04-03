@@ -13,7 +13,7 @@ func (c *Client) GetAccount(ctx context.Context) (*AccountResponse, error) {
 	params := url.Values{}
 	params.Set("omitZeroBalances", "true")
 
-	body, err := c.doSignedGet(ctx, "/api/v3/account", params)
+	body, err := c.DoSignedGet(ctx, "/api/v3/account", params)
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pocky-ops-bot/internal/bot/types"
-	"github.com/pocky-ops-bot/internal/clients/ai"
+	"github.com/pocky-ops-bot/internal/clients/llm"
 )
 
 // mockSender implements MessageSender for testing.
@@ -57,14 +57,14 @@ type mockChat struct {
 }
 
 type mockChatCall struct {
-	history  []ai.ChatMessage
+	history  []llm.ChatMessage
 	userText string
 }
 
-func (m *mockChat) GenerateResponse(ctx context.Context, history []ai.ChatMessage, userText string) (string, error) {
+func (m *mockChat) GenerateResponse(ctx context.Context, history []llm.ChatMessage, userText string) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	histCopy := make([]ai.ChatMessage, len(history))
+	histCopy := make([]llm.ChatMessage, len(history))
 	copy(histCopy, history)
 	m.calls = append(m.calls, mockChatCall{history: histCopy, userText: userText})
 	return m.reply, nil
@@ -205,7 +205,7 @@ func TestDispatcher_ClearCommand(t *testing.T) {
 	// Clear
 	d.Dispatch(ctx, types.Update{
 		UpdateID: 2,
-		Message:  &types.Message{ID: 2, Text: "/clear", Chat: types.Chat{ID: 42}},
+		Message:  &types.Message{ID: 2, Text: "/xoa", Chat: types.Chat{ID: 42}},
 	})
 	time.Sleep(50 * time.Millisecond)
 
@@ -230,7 +230,7 @@ func TestDispatcher_ClearCommand(t *testing.T) {
 	texts := sender.getTexts()
 	found := false
 	for _, txt := range texts {
-		if txt.text == "Conversation history cleared." {
+		if txt.text == "🗑️ Đã xoá lịch sử trò chuyện." {
 			found = true
 			break
 		}
