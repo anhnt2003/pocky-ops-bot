@@ -3,166 +3,169 @@
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A modular Telegram bot for personal workflows, featuring commands for automation, notes, and lightweight integrations. Built with Go using clean architecture principles.
+A modular Telegram bot for personal workflows — AI-powered chat, Binance portfolio tracking (spot + futures), and an extensible tool-calling framework. Built in Go with clean architecture.
 
 ## Features
 
-- 🚀 **Long-Polling Support** - Efficient update retrieval with configurable timeouts
-- 🔄 **Automatic Retry Logic** - Exponential backoff for handling transient failures
-- ⚙️ **Flexible Configuration** - Environment-based settings with sensible defaults
-- 📝 **Structured Logging** - Built-in `log/slog` integration for debugging
-- 🧩 **Modular Architecture** - Clean separation of concerns (MVC-style)
-- ✅ **Well-Tested** - Comprehensive unit tests with mock HTTP clients
+- **AI Chat** — Multi-provider LLM support (Google Gemini, Anthropic Claude, OpenAI, Qwen) with per-chat conversation history
+- **Binance Portfolio** — Real-time spot balances + futures positions, orders, and P&L via `/dautu`
+- **Tool Calling** — AI automatically invokes registered tools to fetch live data
+- **Long-Polling** — Reliable update retrieval with exponential backoff and automatic retry
+- **Per-Chat Isolation** — Each conversation runs in its own goroutine with local history; no shared state
+- **Vietnamese Support** — Configurable to respond in Vietnamese (`AI_VIETNAMESE=true`)
+- **Structured Logging** — `log/slog` throughout with configurable log level
+- **Graceful Shutdown** — Context cancellation + WaitGroup for clean exit
 
 ## Quick Start
 
 ### Prerequisites
 
 - [Go 1.22+](https://go.dev/dl/)
-- A Telegram Bot Token (see [Creating a Telegram Bot](#creating-a-telegram-bot) below)
+- A Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
+- An AI provider API key (Gemini, Claude, OpenAI, or Qwen)
+- *(Optional)* Binance API key + secret for portfolio tracking
 
-### Installation
+### Setup
 
-1. Clone the repository
-2. Run `go mod download` to install dependencies
+```bash
+git clone <repo>
+cd pocky-ops-bot
+go mod download
+cp .env.example .env
+# Edit .env — set TELEGRAM_BOT_TOKEN, AI_API_KEY, and optionally BINANCE_API_KEY
+go run ./cmd/bot
+```
 
-### Configuration
-
-1. Copy `.env.example` to `.env`
-2. Set your `TELEGRAM_BOT_TOKEN` in the `.env` file
-
-### Running the Bot
-
-Run `go run ./cmd/bot` to start the bot.
-
-## Creating a Telegram Bot
-
-To use this project, you need to create a Telegram bot and obtain an API token. Follow these steps:
-
-### Step 1: Start a Chat with BotFather
-
-1. Open Telegram and search for **@BotFather** or click this link: [https://t.me/BotFather](https://t.me/BotFather)
-2. Start a conversation by clicking **Start** or sending `/start`
-
-### Step 2: Create a New Bot
-
-1. Send the command `/newbot` to BotFather
-2. BotFather will ask you for a **name** for your bot (this is the display name, e.g., "My Awesome Bot")
-3. Next, provide a **username** for your bot. It must:
-   - End with `bot` (e.g., `my_awesome_bot` or `MyAwesomeBot`)
-   - Be unique across all Telegram bots
-   - Contain only letters, numbers, and underscores
-
-### Step 3: Get Your Bot Token
-
-1. After successfully creating your bot, BotFather will send you a message containing your **HTTP API token**
-2. The token looks like: `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`
-3. **Keep this token secret!** Anyone with this token can control your bot
-
-### Step 4: Configure Your Bot (Optional)
-
-You can customize your bot by sending these commands to BotFather:
+## Bot Commands
 
 | Command | Description |
 |---------|-------------|
-| `/setdescription` | Set the bot's description (shown in the bot's profile) |
-| `/setabouttext` | Set the "About" text (shown when users open the bot) |
-| `/setuserpic` | Upload a profile picture for your bot |
-| `/setcommands` | Define the command list (shown in the menu) |
-| `/setprivacy` | Set whether the bot can see all messages in groups |
+| `/start` | Welcome message and overview |
+| `/dautu` | Binance portfolio summary (spot + futures) |
+| `/xoa` | Clear current conversation history |
+| `/trogiup` | Full help and usage guide |
 
-### Step 5: Add Token to Your Project
+Any other text is sent to the AI as a chat message, with full conversation context.
 
-1. Copy your token from the BotFather message
-2. Add it to your `.env` file:
-   ```
-   TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
-   ```
+## Configuration
+
+All settings via environment variables or `.env` file. Environment variables take precedence.
+
+### Telegram
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TELEGRAM_BOT_TOKEN` | (required) | Bot token from @BotFather |
+| `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
+| `POLL_INTERVAL` | `1s` | Minimum time between polls |
+| `TIMEOUT` | `30s` | Long-polling timeout (max 50s) |
+
+### AI
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AI_PROVIDER` | `gemini` | `gemini` / `claude` / `openai` / `qwen` |
+| `AI_API_KEY` | (required) | API key for chosen provider |
+| `AI_MODEL` | `gemini-2.0-flash` | Model name |
+| `AI_BASE_URL` | — | Override default API endpoint |
+| `AI_MAX_TOKENS` | `1024` | Max tokens per response |
+| `AI_TIMEOUT` | `60s` | AI request timeout |
+| `AI_SYSTEM_PROMPT` | `You are Pocky...` | System prompt |
+| `AI_VIETNAMESE` | `true` | Force Vietnamese responses |
+
+### Conversation
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CONVERSATION_MAX_TURNS` | `20` | Max message pairs kept in history |
+| `CONVERSATION_TTL` | `30m` | Idle timeout before history is reset |
+
+### Binance *(optional — tools disabled if not set)*
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BINANCE_API_KEY` | — | Binance API key |
+| `BINANCE_SECRET_KEY` | — | Binance secret (HMAC-SHA256 signing) |
+| `BINANCE_BASE_URL` | — | Override spot API URL (testnet) |
+| `BINANCE_FUTURES_BASE_URL` | — | Override futures API URL (testnet) |
 
 ## Project Structure
 
 ```
 pocky-ops-bot/
-├── cmd/bot/                     # Application entry point
+├── cmd/bot/                        # Application entry point
 ├── internal/
-│   ├── bot/types/               # Telegram Bot API type definitions
-│   ├── clients/telegram/        # Telegram API client & polling
-│   └── config/                  # Configuration loading
-├── docs/                        # Architecture documentation
-├── .env.example                 # Environment variable template
-├── AGENTS.md                    # AI agent & code guidelines
-└── CHANGELOG.md                 # Version changelog
+│   ├── bot/                        # Dispatcher, Router, Command handlers
+│   │   ├── dispatcher.go           # Per-chat goroutine routing + history
+│   │   ├── router.go               # Command routing
+│   │   └── handlers/command.go     # /start, /trogiup
+│   ├── clients/
+│   │   ├── telegram/               # Poller, Sender, backoff
+│   │   ├── llm/                    # Multi-provider LLM client
+│   │   └── binance/                # Spot + Futures REST client
+│   ├── services/chat.go            # Stateless AI chat with tool loop
+│   ├── tools/                      # Tool registry + executor interface
+│   │   └── binance/                # 8 Binance tools (3 spot, 5 futures)
+│   └── config/config.go            # Configuration loading
+├── docs/ARCHITECTURE.md            # Detailed architecture docs
+└── .env.example                    # Environment variable template
 ```
-
-## Configuration Reference
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `TELEGRAM_BOT_TOKEN` | (required) | Bot token from BotFather |
-| `LOG_LEVEL` | `info` | Logging level (`debug`, `info`, `warn`, `error`) |
-| `POLL_INTERVAL` | `1s` | Minimum time between polling requests |
-| `TIMEOUT` | `30s` | Long-polling timeout (max 50s per Telegram API) |
 
 ## Development
 
-### Commands
-
-| Command | Description |
-|---------|-------------|
-| `go test ./...` | Run all tests |
-| `go test ./... -cover` | Run tests with coverage |
-| `gofmt -w .` | Format code |
-| `golangci-lint run` | Run linter |
-| `go build -o bot ./cmd/bot` | Build binary |
+```bash
+go test ./...                   # run all tests
+go test ./... -cover            # with coverage
+go test ./... -race             # race detector
+go build -o bot ./cmd/bot       # build binary
+gofmt -w .                      # format code
+golangci-lint run               # lint
+```
 
 ## Architecture
 
-The bot follows MVC-style layering adapted for Go:
+The bot uses a **per-chat goroutine** model: each conversation runs in its own goroutine owning its history as local state. No locks or shared mutable state between chats.
 
-| Layer | Description |
-|-------|-------------|
-| **Clients** | Telegram API client, polling, backoff strategies |
-| **Bot Types** | Comprehensive Telegram Bot API type definitions |
-| **Config** | Environment-based configuration loading |
+```
+Telegram → Poller → Dispatcher → per-chat worker goroutine
+                                       ↓
+                                 ChatService (stateless)
+                                       ↓
+                              LLM client + Tool registry
+                                       ↓
+                              Binance API (if configured)
+```
 
-For detailed architecture documentation, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full details: component reference, data flows, interface boundaries, and design patterns.
+
+## Creating a Telegram Bot
+
+1. Open Telegram and message [@BotFather](https://t.me/BotFather)
+2. Send `/newbot` and follow prompts (name + username ending in `bot`)
+3. Copy the token and set `TELEGRAM_BOT_TOKEN` in `.env`
 
 ## Dependencies
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| [github.com/joho/godotenv](https://github.com/joho/godotenv) | v1.5.1 | Load environment from `.env` files |
+| [github.com/joho/godotenv](https://github.com/joho/godotenv) | v1.5.1 | Load `.env` files |
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Follow the [AGENTS.md](AGENTS.md) guidelines for code style
-4. Write tests for new functionality (maintain >80% coverage on services)
-5. Open a Pull Request
+All other functionality uses the Go standard library.
 
 ## Security
 
-- **Never commit tokens or API keys** - use environment variables
-- **Validate all user inputs** - especially commands and callbacks
-- **Use parameterized queries** - for any database access
-- **Apply least-privilege** - for bot permissions and integrations
+- Never commit tokens or API keys — use environment variables only
+- Validate all user inputs (commands and callbacks)
+- Parameterized queries for any database access
+- Apply least-privilege for bot permissions and integrations
 
 ## Roadmap
 
-- [ ] Command router with prefix matching
-- [ ] Middleware support (auth, logging, rate limiting)
-- [ ] Conversation state management
-- [ ] Service layer for business logic
-- [ ] Repository layer with SQLite/PostgreSQL support
 - [ ] Webhook mode support
+- [ ] Middleware chain (auth, rate limiting, logging)
+- [ ] Repository layer (SQLite/PostgreSQL) for persistent history
+- [ ] More tool integrations
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [Telegram Bot API](https://core.telegram.org/bots/api) - Official API documentation
-- [BotFather](https://t.me/BotFather) - Official bot creation tool
-- [godotenv](https://github.com/joho/godotenv) - Environment variable loading
+MIT License — see [LICENSE](LICENSE) for details.
